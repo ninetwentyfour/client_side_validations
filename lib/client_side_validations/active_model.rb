@@ -1,5 +1,4 @@
 require 'client_side_validations/core_ext'
-require 'client_side_validations/extender'
 require 'client_side_validations/active_model/conditionals'
 
 module ClientSideValidations
@@ -62,32 +61,22 @@ module ClientSideValidations
       def can_use_for_client_side_validation?(attr, validator, force)
         return false if validator_turned_off?(attr, validator, force)
 
-        result = check_new_record(validator)
+        # Yeah yeah, #new_record? is not part of ActiveModel :p
+        result = ((respond_to?(:new_record?) && validator.options[:on] == (new_record? ? :create : :update)) || validator.options[:on].nil?)
         result &&= validator.kind != :block
 
         if validator.options[:if] || validator.options[:unless]
-          check_conditionals attr, validator, force
-        else
-          result
-        end
-      end
-
-      # Yeah yeah, #new_record? is not part of ActiveModel :p
-      def check_new_record(validator)
-        (respond_to?(:new_record?) && validator.options[:on] == (new_record? ? :create : :update)) || validator.options[:on].nil?
-      end
-
-      def check_conditionals(attr, validator, force)
-        return true if validator.options[:if] && validator.options[:if] =~ /changed\?/
-
-        result = can_force_validator?(attr, validator, force)
-
-        if validator.options[:if]
-          result &&= run_conditionals(validator.options[:if], :if)
-        end
-
-        if validator.options[:unless]
-          result &&= run_conditionals(validator.options[:unless], :unless)
+          if validator.options[:if] && validator.options[:if] =~ /changed\?/
+            result = true
+          else
+            result = can_force_validator?(attr, validator, force)
+            if validator.options[:if]
+              result &&= run_conditionals(validator.options[:if], :if)
+            end
+            if validator.options[:unless]
+              result &&= run_conditionals(validator.options[:unless], :unless)
+            end
+          end
         end
 
         result
@@ -156,4 +145,7 @@ end
 ActiveModel::Validator.send(:include, ClientSideValidations::ActiveModel::Validator)
 ActiveModel::Validations.send(:include, ClientSideValidations::ActiveModel::Validations)
 
-ClientSideValidations::Extender.extend 'ActiveModel', %w(Absence Acceptance Exclusion Format Inclusion Length Numericality Presence)
+%w(Absence Acceptance Exclusion Format Inclusion Length Numericality Presence).each do |validator|
+  require "client_side_validations/active_model/#{validator.downcase}"
+  ActiveModel::Validations.const_get("#{validator}Validator").send :include, ClientSideValidations::ActiveModel.const_get(validator)
+end
