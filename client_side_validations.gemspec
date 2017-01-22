@@ -19,6 +19,8 @@ Gem::Specification.new do |spec|
   spec.files         = `git ls-files -z -- {HISTORY.md,README.md,lib,vendor}`.split("\x0")
   spec.require_paths = ['lib']
 
+  spec.post_install_message = "*** WARNING ***\nClientSideValidations 6.0 with Rails 5 support was released. You are using a deprecated branch that will be removed soon."
+
   spec.add_dependency 'rails', '>= 5.0.0', '< 5.1.0'
   spec.add_dependency 'jquery-rails', '~> 4.0', '>= 4.0.1'
   spec.add_dependency 'js_regex', '~> 1.0', '>= 1.0.19'
